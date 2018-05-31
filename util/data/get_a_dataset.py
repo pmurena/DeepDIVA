@@ -9,6 +9,8 @@ import inspect
 import os
 import shutil
 import sys
+import urllib
+import zipfile
 
 import torch
 import torchvision
@@ -118,14 +120,14 @@ def coco(args):
         print('Processing: {}'.format(source))
 
         # Download archive
-        responce = request.urlretrieve(
+        responce = urllib.request.urlretrieve(
             source,
             './tmp_file_19800223',
             _download_reporthook
         )
 
         # Extract archive
-        with ZipFile(responce[0]) as zip_file:
+        with zipfile.ZipFile(responce[0]) as zip_file:
             print('\tinflating to {}'.format(target))
 
             # Store images to DeepDiva standard folder structure
@@ -144,7 +146,7 @@ def coco(args):
                 zip_file.extractall(target)
 
         # Release memory and disk space
-        request.urlcleanup()
+        urllib.request.urlcleanup()
 
     return
 
@@ -181,7 +183,7 @@ def _download_reporthook(blocknum, blocksize, totalsize):
         str_end = '\n'
 
     # Write download progress to standard output
-    stdout.write('\tDownloading: {:3d}% {}'.format(
+    sys.stdout.write('\tDownloading: {:3d}% {}'.format(
             progress,
             str_end
         )
