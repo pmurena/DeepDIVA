@@ -11,6 +11,7 @@ import shutil
 import sys
 import urllib
 import zipfile
+import json
 
 import torch
 import torchvision
@@ -70,11 +71,25 @@ def coco(args):
             |__ test
 
     Where "folder" is as defined by "args.output_folder" or "./data" if
-    "args.output_folder" is not set. Train, valid, and test hold the image
-    files for training, validation, and testing. coco(args) will only alter the
-    original COCO folder structure; the data split remains unchanged. All
-    descriptions files, later used to build the data loader, are stored in the
-    annotations folder.
+    "args.output_folder" is not set. Train, valid, and test hold the images and
+    annotation files for training, validation, and testing. The annotation
+    files generated, data_info.json, are stored in the same folder as the
+    respective images and have the following format:
+        {
+            image_id (int): COCO image id
+            {
+                file_name (str): coco image file name,
+                labels (set): conjunction of coco categories and stuff
+                captions (list): all captions of the current image
+            }
+        }
+
+    coco(args) will only alter the original COCO folder structure; the data
+    split remains unchanged.
+
+    All original descriptions files, as well as license information, are stored
+    in "args.output_folder/annotations". For more details on COCO see:
+        http://cocodataset.org/
 
     Args:
         args (ArgumentParser): Command line arguments as set in main().
@@ -88,6 +103,7 @@ def coco(args):
     train_dir = os.path.join(root_dir, 'train')
     valid_dir = os.path.join(root_dir, 'valid')
     test_dir = os.path.join(root_dir, 'test')
+    anno_dir = os.path.join(root_dir, 'annotations')
 
     # Define coco urls
     base_url = 'http://images.cocodataset.org/'
@@ -148,6 +164,75 @@ def coco(args):
         # Release memory and disk space
         urllib.request.urlcleanup()
 
+    print(
+        'Build data annotation files and store them in the image directories'
+    )
+    instances_file_name = 'instances_{}2017.json'
+    captions_file_name = 'captions_{}2017.json'
+    stuff_file_name = 'stuff_{}2017.json'
+    phases = ['train', 'val']
+    anno_files = {
+        ph: [
+            os.path.join(anno_dir, instances_file_name.format(ph)),
+            os.path.join(anno_dir, captions_file_name.format(ph)),
+            os.path.join(anno_dir, stuff_file_name.format(ph))
+        ] for ph in phases
+    }
+
+    for phase in phases:
+        data_dir = train_dir if phase == 'train' else valid_dir
+
+        print('\tload {} annotations'.format(phase))
+        data = list()
+        for file_in in anno_files[phase]:
+            with open(file_in) as f:
+                data.append(json.load(f))
+        instances, captions, stuff = data
+
+        print('\tbuild {} object dictionary'.format(phase))
+        data_obj = {
+            img['id']: {
+                'file_name': img['file_name'],
+                'labels': set(),
+                'captions': list()
+            } for img in instances['images']
+        }
+
+        print('\tbuild annotation dictionaries')
+        categories = {
+            cat['id']: cat['name'] for cat in instances['categories']
+        }
+        stuff_names = {st['id']: st['name'] for st in stuff['categories']}
+
+        print('\tadd labels to {} object'.format(phase))
+        for inst in instances['annotations']:
+            data_obj[inst['image_id']]['labels'].update(
+                [categories[inst['category_id']]]
+            )
+
+        print('\tadd stuff to {} object'.format(phase))
+        for st in stuff['annotations']:
+            s = stuff_names[st['category_id']]
+            s = s.split('-') if '-' in s else [s]
+            data_obj[st['image_id']]['labels'].update(
+                [el for el in s if el != 'other']
+            )
+
+        print('\tconvert labels set to list')
+        for img in data_obj:
+            data_obj[img]['labels'] = list(data_obj[img]['labels'])
+
+        print('\tadd caption to {} object'.format(phase))
+        for caption in captions['annotations']:
+            data_obj[caption['image_id']]['captions'].append(
+                caption['caption']
+            )
+
+        print('\twrite {} object to {}'.format(phase, data_dir))
+        with open(os.path.join(data_dir, 'data_info.json'), 'w') as file_out:
+            json.dump(data_obj, file_out)
+
+    print('all done, COCO dataset is now available in {}'.format(root_dir))
     return
 
 
@@ -190,6 +275,7 @@ def _download_reporthook(blocknum, blocksize, totalsize):
     )
 
     return
+
 
 if __name__ == "__main__":
     downloadable_datasets = [name[0] for name in inspect.getmembers(sys.modules[__name__],
