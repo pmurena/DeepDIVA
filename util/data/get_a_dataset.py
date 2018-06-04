@@ -198,7 +198,7 @@ def coco(args):
             } for img in instances['images']
         }
 
-        print('\tbuild annotation dictionaries')
+        # Build annotation dictionaries
         categories = {
             cat['id']: cat['name'] for cat in instances['categories']
         }
@@ -218,7 +218,7 @@ def coco(args):
                 [el for el in s if el != 'other']
             )
 
-        print('\tconvert labels set to list')
+        # convert labels set to list
         for img in data_obj:
             data_obj[img]['labels'] = list(data_obj[img]['labels'])
 
