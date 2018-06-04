@@ -79,7 +79,7 @@ def coco(args):
             image_id (int): COCO image id
             {
                 file_name (str): coco image file name,
-                labels (set): conjunction of coco categories and stuff
+                labels (list): conjunction of coco categories and stuff
                 captions (list): all captions of the current image
             }
         }
