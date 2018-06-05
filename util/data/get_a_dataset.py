@@ -67,11 +67,11 @@ def coco(args):
         folder
             |__ annotations
             |__ train
-            |__ valid
+            |__ val
             |__ test
 
     Where "folder" is as defined by "args.output_folder" or "./data" if
-    "args.output_folder" is not set. Train, valid, and test hold the images and
+    "args.output_folder" is not set. Train, val, and test hold the images and
     annotation files for training, validation, and testing. The annotation
     files generated, data_info.json, are stored in the same folder as the
     respective images and have the following format:
@@ -101,7 +101,7 @@ def coco(args):
     # Build dataset folder structure
     root_dir = os.path.join(args.output_folder, 'coco')
     train_dir = os.path.join(root_dir, 'train')
-    valid_dir = os.path.join(root_dir, 'valid')
+    val_dir = os.path.join(root_dir, 'val')
     test_dir = os.path.join(root_dir, 'test')
     anno_dir = os.path.join(root_dir, 'annotations')
 
@@ -128,9 +128,9 @@ def coco(args):
         False
     ))
     to_download.append((images_url + 'train2017.zip', train_dir, True))
-    to_download.append((images_url + 'val2017.zip', valid_dir, True))
+    to_download.append((images_url + 'val2017.zip', val_dir, True))
     to_download.append((images_url + 'test2017.zip', test_dir, True))
-    '''
+
     # Download and extract files from to_download dictionary
     for source, target, is_image in to_download:
         print('Processing: {}'.format(source))
@@ -162,7 +162,7 @@ def coco(args):
                 zip_file.extractall(target)
 
         # Release memory and disk space
-        urllib.request.urlcleanup()'''
+        urllib.request.urlcleanup()
 
     print('Build data annotation files and store them in the image directories')
     instances_file_name = 'instances_{}2017.json'
@@ -178,7 +178,7 @@ def coco(args):
     }
 
     for phase in phases:
-        data_dir = train_dir if phase == 'train' else valid_dir
+        data_dir = train_dir if phase == 'train' else val_dir
 
         print('\tload {} annotations'.format(phase))
         data = list()
