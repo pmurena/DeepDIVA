@@ -130,7 +130,7 @@ def coco(args):
     to_download.append((images_url + 'train2017.zip', train_dir, True))
     to_download.append((images_url + 'val2017.zip', valid_dir, True))
     to_download.append((images_url + 'test2017.zip', test_dir, True))
-
+    '''
     # Download and extract files from to_download dictionary
     for source, target, is_image in to_download:
         print('Processing: {}'.format(source))
@@ -162,11 +162,9 @@ def coco(args):
                 zip_file.extractall(target)
 
         # Release memory and disk space
-        urllib.request.urlcleanup()
+        urllib.request.urlcleanup()'''
 
-    print(
-        'Build data annotation files and store them in the image directories'
-    )
+    print('Build data annotation files and store them in the image directories')
     instances_file_name = 'instances_{}2017.json'
     captions_file_name = 'captions_{}2017.json'
     stuff_file_name = 'stuff_{}2017.json'
@@ -228,9 +226,17 @@ def coco(args):
                 caption['caption']
             )
 
-        print('\twrite {} object to {}'.format(phase, data_dir))
+        print('\tconvert and write {} object to {}'.format(phase, data_dir))
+        data_to_store = [
+            {
+                'id': img_id,
+                'file_name': data_obj[img_id]['file_name'],
+                'labels': data_obj[img_id]['labels'],
+                'captions': data_obj[img_id]['captions']
+            }for img_id in data_obj
+        ]
         with open(os.path.join(data_dir, 'data_info.json'), 'w') as file_out:
-            json.dump(data_obj, file_out)
+            json.dump(data_to_store, file_out)
 
     print('all done, COCO dataset is now available in {}'.format(root_dir))
     return
