@@ -12,6 +12,7 @@ import sys
 import urllib.request
 import zipfile
 import json
+import wikipedia
 
 import torch
 import torchvision
@@ -97,6 +98,8 @@ def coco(args):
     Returns:
         None
 
+    Raises:
+        None
     """
     # Build dataset folder structure
     root_dir = os.path.join(args.output_folder, 'coco')
@@ -242,6 +245,98 @@ def coco(args):
     return
 
 
+def wiki(args):
+    """Retrieves a list of Wikipedia pages and build a corpus from them.
+
+    Pages are selected using a list of keywords. The keywords can be provided
+    using the --wiki-search-file command line argument.  If no input file is
+    specified, wiki(args) will look for the coco data set in the folder
+    specified by --output-folder or in './data' if not specified. If none of
+    the above can be found a FileNotFoundError exception is raised.
+
+    All pages content corresponding to the keywords is concatenated in one
+    large corpus text file. The generated file is stored in a wiki folder under
+    the folder passed as argument using --output_folder or './data' if the
+    latter isn't specified.
+
+    Args:
+        args (ArgumentParser): Command line arguments as set in main()
+
+    Returns:
+        None
+
+    Raises:
+        FileNotFoundError: The built-in open(file, mode=r, ... ) exceptions are
+                            propagated.
+    """
+
+    words_to_search = set()
+
+    if args.wiki_search_list == 'coco':  # If default use coco dataset
+
+        # Build corpus from coco train/val labels found in data_info files.
+        root_dir = os.path.join(args.output_folder, 'coco')
+        sub_dirs = ['train', 'val']
+        for phase in sub_dirs:
+
+            # Read data_info files
+            file_name = os.path.join(root_dir, phase, 'data_info.json')
+            file = list()
+            with open(file_name, 'r') as f:
+                file = json.load(f)
+
+            # Build set of keywords from labels
+            words_to_search.update([
+                el for elem in file for el in elem['labels']
+            ])
+
+    else:  # if not default use wiki_search_list
+
+        # Open prvided keywords file and generate keywords set
+        with open(args.wiki_search_list, 'r') as f:
+            words_to_search.update([elem.rstrip() for elem in f])
+
+    # Initiate counters, stat message and corpus
+    count_err = 0
+    count = 0
+    corpus = str()
+    prog_msg = 'Trying to retrieve wikipedia page for "{}":\n\t'
+    prog_msg += '{} pages of {} processed\n\t{} pages not found'
+
+    # Add wiki page of each word to corpus and keep some stats
+    word_count = len(words_to_search)
+    for term in words_to_search:
+        count += 1
+
+        try:  # If wiki page existe add content to corpus
+            page = wikipedia.page(term)
+            corpus += '{}\n{}\n\n'.format(page.title, page.content)
+
+        except Exception:
+            # if page not found increase error counter and proceed
+            count_err += 1
+            continue
+
+        # Clear lines and move cursor up
+        sys.stdout.write(u'\r\u001b[0J')
+        sys.stdout.write(u"\u001b[0A\u001b[0J" * 2)
+
+        # Print progress to standard output
+        sys.stdout.write(prog_msg.format(term, count, word_count, count_err))
+
+    sys.stdout.write('\n')
+
+    # make output folder if not existe
+    folder = os.path.join(args.output_folder, 'wiki')
+    _make_folder_if_not_exists(folder)
+
+    # Save corpus to disk
+    with open(os.path.join(folder, args.output_file), 'w') as f:
+        f.write(corpus)
+
+    return
+
+
 def _make_folder_if_not_exists(path):
     if not os.path.exists(path):
         os.makedirs(path)
@@ -255,6 +350,7 @@ def _download_reporthook(blocknum, blocksize, totalsize):
     urlretrieve() after each block is received. Thus, the downloading
     percentage is computed and displayed to the standard output for each
     incoming block.
+
     Args:
         blocknum (int): Number of received blocks
         blocksize (int): Size of the incoming network blocks
@@ -263,6 +359,8 @@ def _download_reporthook(blocknum, blocksize, totalsize):
     Returns:
         None
 
+    Raises:
+        None
     """
     # Compute download progress
     progress = int(blocknum * blocksize / totalsize * 100)
@@ -299,6 +397,16 @@ if __name__ == "__main__":
                         required=False,
                         type=str,
                         default='./data/')
+    parser.add_argument('--wiki-search-list',
+                        help='File containing one word per line to retrieved from wikipedia.',
+                        required=False,
+                        type=str,
+                        default='coco')
+    parser.add_argument('--output-file',
+                        help='File to store the wiki corpus to.',
+                        required=False,
+                        type=str,
+                        default='corpus.txt')
     args = parser.parse_args()
 
     getattr(sys.modules[__name__], args.dataset)(args)
