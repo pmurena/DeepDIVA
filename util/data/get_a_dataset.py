@@ -99,7 +99,7 @@ def coco(args):
 
     """
     # Build dataset folder structure
-    root_dir = os.path.join(args.output_folder, 'COCO')
+    root_dir = os.path.join(args.output_folder, 'coco')
     train_dir = os.path.join(root_dir, 'train')
     valid_dir = os.path.join(root_dir, 'valid')
     test_dir = os.path.join(root_dir, 'test')
@@ -218,7 +218,7 @@ def coco(args):
                 [el for el in s if el != 'other']
             )
 
-        # convert labels set to list
+        # convert labels set to list to store it as json
         for img in data_obj:
             data_obj[img]['labels'] = list(data_obj[img]['labels'])
 
