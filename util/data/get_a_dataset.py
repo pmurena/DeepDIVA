@@ -13,6 +13,8 @@ import urllib.request
 import zipfile
 import json
 import wikipedia
+import re
+import warnings
 
 import torch
 import torchvision
@@ -308,6 +310,9 @@ def wiki(args):
     for term in words_to_search:
         count += 1
 
+        # Supress warnings to ignore BS4 api warning raised by wikipedia
+        warnings.filterwarnings("ignore")
+
         try:  # If wiki page existe add content to corpus
             page = wikipedia.page(term)
             corpus += '{}\n{}\n\n'.format(page.title, page.content)
@@ -317,16 +322,29 @@ def wiki(args):
             count_err += 1
             continue
 
+        # Reactivate warnings
+        warnings.filterwarnings("default")
+
         # Clear lines and move cursor up
-        sys.stdout.write(u'\r\u001b[0J')
-        sys.stdout.write(u"\u001b[0A\u001b[0J" * 2)
+        if count > 1:
+            sys.stdout.write(u'\r\u001b[0J')
+            sys.stdout.write(u"\u001b[0A\u001b[0J" * 2)
 
         # Print progress to standard output
         sys.stdout.write(prog_msg.format(term, count, word_count, count_err))
 
     sys.stdout.write('\n')
 
+    # Clean-up corpus.
+    print('Post-processing')
+    corpus = re.sub('=+', '', corpus)
+    corpus = re.sub('\n', '', corpus)
+    corpus = re.sub('([.,!?():;\'])', r' \1 ', corpus)
+    corpus = re.sub('([0-9]) ([.,\']) ([0-9])', r'\1\2\3', corpus)
+    corpus = re.sub(' +', ' ', corpus)
+
     # make output folder if not existe
+    print('Write corpus to disc')
     folder = os.path.join(args.output_folder, 'wiki')
     _make_folder_if_not_exists(folder)
 
@@ -334,6 +352,7 @@ def wiki(args):
     with open(os.path.join(folder, args.output_file), 'w') as f:
         f.write(corpus)
 
+    print('All done, the corpus can be found in {}'.format(folder))
     return
 
 
