@@ -16,53 +16,46 @@ import json
 import torch.utils.data as data
 
 
-def load_dataset(dataset_folder):
+def load_dataset(dataset_folder, file_name='data_info.json'):
+    """ Loads a dataset from disc for each phase: training, validation, and test
+
+    Retrieves annotations and creates Multitask datasets for each phase.
+    load_dataset(args) assumes the data is split into train, valid, test on
+    disc. If the mentioned folder is not found None will be returned instead of
+    a Multitask object.
+
+    Args:
+        dataset_folder  (str): Path to the root dataset folder on the file
+            system
+        file_name (str): Annotation file name. Default: 'data_info.json'
+        source_key (str): Key name to retrieve the source image in file_name
+        tasks_keys (list(str)): Key names for each task groun-truth in
+            file_name
+
+    Returns:
+    train (Multitask): training dataset or None if training annotations
+        not found
+    valid (Multitask): validation dataset or None if training annotations
+        not found
+    test (Multitask): test dataset or None if training annotations not found
     """
-    Loads the dataset from file system and provides the dataset splits for
-    train validation and test
-
-    The dataset is expected to be in the following structure, where
-    'dataset_folder' has to point to
-    the root of the three folder train/val/test.
-
-    Example:
-
-        dataset_folder = "~/../../data/coco"
-
-    which contains the splits sub-folders as follow:
-
-        'dataset_folder'/train
-        'dataset_folder'/val
-        'dataset_folder'/test
-
-    Parameters
-    ----------
-    dataset_folder (string): Path to the dataset on the file System
-
-    Returns
-    -------
-    train_ds (data.Dataset): Dataset containing the training split
-    val_ds (data.Dataset): Dataset containing the valitation split
-    test_ds (data.Dataset): Dataset containing the test split
-    """
-    # Get the splits folders
-    train_dir = os.path.join(dataset_folder, 'train')
-    val_dir = os.path.join(dataset_folder, 'val')
-    test_dir = os.path.join(dataset_folder, 'test')
+    phases = ['train', 'val', 'test']
+    r_val = list()
 
     # Sanity check on the splits folders
     error_msg = "data_info.json not found in the dataset_folder={}"
     error_msg = error_msg.format(dataset_folder)
     error_msg = '{} ' + error_msg
-    if not os.path.exists(train_dir):
-        logging.error(error_msg.format('Train'))
-        sys.exit(-1)
-    if not os.path.exists(val_dir):
-        logging.error(error_msg.format('Val'))
-        sys.exit(-1)
+    for ph in phases:
+        dir = os.path.join(dataset_folder, ph)
+        if os.path.exists(os.path.join(dir, file_name)):
+            r_val.append(Multitask(dir, file_name=file_name))
+        else:
+            r_val.append(None)
+            logging.error(error_msg.format(ph))
 
     # Get the datasets
-    return Multitask(train_dir), Multitask(val_dir)
+    return r_val
 
 
 class Multitask(data.Dataset):
@@ -70,23 +63,37 @@ class Multitask(data.Dataset):
     This class loads the data_info.json file and prepares it as a dataset.
     """
 
-    def __init__(self, path, transform=None, target_transform=None):
-        """
-        Load the data_info.json file and prepare it as a dataset.
+    def __init__(
+        self,
+        path,  # Path to dataset root directory
+        file_name='data_info.json',  # Name of the annotations file
+        source_key='file_name',  # Name of the source data key in data
+        tasks_keys=['labels', 'captions']  # Names of the GT keys
+    ):
+        """ Load the data description file and prepare it as a multitask dataset.
 
-        Parameters
-        ----------
-        path (string): Path to the dataset on the file System
-        transform (torchvision.transforms): Transformation to apply on the data
-        target_transform (torchvision.transforms):
-                Transformation to apply on the labels
+        Multitask learning allows learning multiple objectives at once. This
+        dataset can be used to perform such learning tasks if data with several
+        ground-truth types is provided. The data is read from a JSON file
+        which,for each data sample, contains the image name/path as well as
+        ground-truth for each learning task. In order to build itself properly
+        the key names for the file name and the various learning tasks, must be
+        given.
+
+        Args:
+            path  (str): Path to the root dataset folder on the file system
+            file_name (str): Annotation file name. Default: 'data_info.json'
+            source_key (str): Key name to retrieve the source image in
+                file_name
+            tasks_keys (list(str)): Key names for each task groun-truth in
+                file_name
         """
         self.path = os.path.expanduser(path)
-        self.transform = transform
-        self.target_transform = target_transform
+        self.source_key = source_key
+        self.tasks_keys = tasks_keys
 
         # Read data from the json file
-        with open(os.path.join(path, 'data_info.json')) as f:
+        with open(os.path.join(path, file_name)) as f:
             self.data = json.load(f)
 
         # Shuffle the data once
@@ -94,29 +101,22 @@ class Multitask(data.Dataset):
         # class in each minibatch for val and test)
         np.random.shuffle(self.data)
 
-        # Set expected class attributes
-        self.vocabulary = set([
-            word for elems in self.data for word in elems['labels']
-        ])
-        self.corpus = '\n'.join([
-            caption for elems in self.data for caption in elems['captions']
-        ])
-
     def __getitem__(self, index):
         """
         Retrieve a sample by index
 
-        Parameters
-        ----------
-        index (int): The index of the image to retrieve
+        Args:
+            index (int): The index of the image to retrieve
 
-        Returns
-        -------
+        Returns:
+            img (numpy.ndarray): the source images
+            ground_truth (dict): ground_truth for each task to be learned
 
         """
         sample = self.data[index]
-        img = io.imread(os.path.join(self.path, sample['file_name']))
-        return img, sample['labels'], sample['captions']
+        img = io.imread(os.path.join(self.path, sample[self.source_key]))
+        ground_truth = {gt: sample[gt] for gt in self.tasks_keys}
+        return img, ground_truth
 
     def __len__(self):
         return len(self.data)
@@ -124,9 +124,12 @@ class Multitask(data.Dataset):
 
 if __name__ == "__main__":
     print('main() is used for testing only and should not be called otherwise')
-    train, val = load_dataset('data/coco')
+    train, val, test = load_dataset('data/coco')
 
-    print(len(train))
-    print(val[0][1])
-    print('\n'.join(val[0][2]))
-    plt.imshow(val[0][0])
+    print(len(val))
+    print('source type: \n\t{}\nlabels:\n\t{}\ncaptions:\n\t{}\n'.format(
+            type(val[0][0]),
+            '\n\t'.join(val[0][1]['labels']),
+            '\n\t'.join(val[0][1]['captions'])
+        )
+    )
