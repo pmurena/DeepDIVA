@@ -253,7 +253,7 @@ def wiki(args):
     """Downloads the latest dump from the English Wikipedia and builds a corpus.
 
     All pages content is saved in mini rowtext files by WikiExtractor. The
-    generated file is stored in a wiki folder under the folder passed as
+    generated files are stored in a wiki folder under the folder passed as
     argument using --output_folder or './data' if the latter isn't specified.
 
     Args:
