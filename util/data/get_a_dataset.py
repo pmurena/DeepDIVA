@@ -11,6 +11,7 @@ import shutil
 import sys
 import urllib.request
 import zipfile
+import bz2
 import json
 import wikipedia
 import re
@@ -21,6 +22,7 @@ import torchvision
 from PIL import Image
 
 from util.data.dataset_splitter import split_dataset
+from util.externals.wikiextractor import WikiExtractor
 
 
 def mnist(args):
@@ -248,18 +250,11 @@ def coco(args):
 
 
 def wiki(args):
-    """Retrieves a list of Wikipedia pages and build a corpus from them.
+    """Downloads the latest dump from the English Wikipedia and builds a corpus.
 
-    Pages are selected using a list of keywords. The keywords can be provided
-    using the --wiki-search-file command line argument.  If no input file is
-    specified, wiki(args) will look for the coco data set in the folder
-    specified by --output-folder or in './data' if not specified. If none of
-    the above can be found a FileNotFoundError exception is raised.
-
-    All pages content corresponding to the keywords is concatenated in one
-    large corpus text file. The generated file is stored in a wiki folder under
-    the folder passed as argument using --output_folder or './data' if the
-    latter isn't specified.
+    All pages content is saved in mini rowtext files by WikiExtractor. The
+    generated file is stored in a wiki folder under the folder passed as
+    argument using --output_folder or './data' if the latter isn't specified.
 
     Args:
         args (ArgumentParser): Command line arguments as set in main()
@@ -268,89 +263,38 @@ def wiki(args):
         None
 
     Raises:
-        FileNotFoundError: The built-in open(file, mode=r, ... ) exceptions are
-                            propagated.
+        None
     """
+    # Make wiki folder
+    wiki_path = os.path.join(args.output_folder, 'wiki')
+    _make_folder_if_not_exists(wiki_path)
 
-    words_to_search = set()
+    # Download archive
+    source = 'https://dumps.wikimedia.org/enwiki/latest/'
+    source += 'enwiki-latest-pages-articles.xml.bz2'
+    responce = urllib.request.urlretrieve(
+        source,
+        './tmp_file_19800223.bz2',
+        _download_reporthook
+    )
+    urllib.request.urlcleanup()
 
-    if args.wiki_search_list == 'coco':  # If default use coco dataset
+    # Extract wiki dump
+    wiki_dump_file = os.path.join(wiki_path, 'wiki_dump.xml')
+    with open(wiki_dump_file, 'wb') as wiki_dump_xml:
+        with bz2.BZ2File(responce[0], 'rb') as file:
+            print('Inflating wiki_dump.xml to {}'.format(wiki_path))
+            for data in iter(lambda: file.read(100 * 1024), b''):
+                wiki_dump_xml.write(data)
 
-        # Build corpus from coco train/val labels found in data_info files.
-        root_dir = os.path.join(args.output_folder, 'coco')
-        sub_dirs = ['train', 'val']
-        for phase in sub_dirs:
-
-            # Read data_info files
-            file_name = os.path.join(root_dir, phase, 'data_info.json')
-            file = list()
-            with open(file_name, 'r') as f:
-                file = json.load(f)
-
-            # Build set of keywords from labels
-            words_to_search.update([
-                el for elem in file for el in elem['labels']
-            ])
-
-    else:  # if not default use wiki_search_list
-
-        # Open prvided keywords file and generate keywords set
-        with open(args.wiki_search_list, 'r') as f:
-            words_to_search.update([elem.rstrip() for elem in f])
-
-    # Initiate counters, stat message and corpus
-    count_err = 0
-    count = 0
-    corpus = str()
-    prog_msg = 'Trying to retrieve wikipedia page for "{}":\n\t'
-    prog_msg += '{} pages of {} processed\n\t{} pages not found'
-
-    # Add wiki page of each word to corpus and keep some stats
-    word_count = len(words_to_search)
-    for term in words_to_search:
-        count += 1
-
-        # Supress warnings to ignore BS4 api warning raised by wikipedia
-        warnings.filterwarnings("ignore")
-
-        try:  # If wiki page existe add content to corpus
-            page = wikipedia.page(term)
-            corpus += '{}\n{}\n\n'.format(page.title, page.content)
-
-        except Exception:
-            # if page not found increase error counter and proceed
-            count_err += 1
-            continue
-
-        # Reactivate warnings
-        warnings.filterwarnings("default")
-
-        # Clear lines and move cursor up
-        if count > 1:
-            sys.stdout.write(u'\r\u001b[0J')
-            sys.stdout.write(u"\u001b[0A\u001b[0J" * 2)
-
-        # Print progress to standard output
-        sys.stdout.write(prog_msg.format(term, count, word_count, count_err))
-
-    sys.stdout.write('\n')
-
-    # Clean-up corpus.
-    print('Post-processing')
-    corpus = re.sub('=+', '', corpus)
-    corpus = re.sub('\n', '', corpus)
-    corpus = re.sub('([.,!?():;\'])', r' \1 ', corpus)
-    corpus = re.sub('([0-9]) ([.,\']) ([0-9])', r'\1\2\3', corpus)
-    corpus = re.sub(' +', ' ', corpus)
-
-    # make output folder if not existe
-    print('Write corpus to disc')
-    folder = os.path.join(args.output_folder, 'wiki')
-    _make_folder_if_not_exists(folder)
-
-    # Save corpus to disk
-    with open(os.path.join(folder, args.output_file), 'w') as f:
-        f.write(corpus)
+    # Extract text from wiki dump
+    tmp_argv = list(sys.argv)
+    sys.argv = list()
+    sys.argv.extend(['WikiExtractor.py'])
+    sys.argv.extend([wiki_dump_file])
+    sys.argv.extend(['-o', wiki_path])
+    WikiExtractor.main()
+    sys.argv = list(tmp_argv)
 
     print('All done, the corpus can be found in {}'.format(folder))
     return
@@ -382,7 +326,7 @@ def _download_reporthook(blocknum, blocksize, totalsize):
         None
     """
     # Compute download progress
-    progress = int(blocknum * blocksize / totalsize * 100)
+    progress = blocknum * blocksize / totalsize
 
     # Choose between carriage return and new line
     if progress < 100:
@@ -391,7 +335,7 @@ def _download_reporthook(blocknum, blocksize, totalsize):
         str_end = '\n'
 
     # Write download progress to standard output
-    sys.stdout.write('\tDownloading: {:3d}% {}'.format(
+    sys.stdout.write('\tDownloading: {:.2%} {}'.format(
             progress,
             str_end
         )
@@ -416,16 +360,6 @@ if __name__ == "__main__":
                         required=False,
                         type=str,
                         default='./data/')
-    parser.add_argument('--wiki-search-list',
-                        help='File containing one word per line to retrieved from wikipedia.',
-                        required=False,
-                        type=str,
-                        default='coco')
-    parser.add_argument('--output-file',
-                        help='File to store the wiki corpus to.',
-                        required=False,
-                        type=str,
-                        default='corpus.txt')
     args = parser.parse_args()
 
     getattr(sys.modules[__name__], args.dataset)(args)
