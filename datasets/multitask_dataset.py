@@ -1,5 +1,5 @@
 """
-Load a dataset of bidimensional points by specifying the folder where its located.
+Load a dataset of multitask data by specifying the folder where its located.
 """
 
 # Utils
