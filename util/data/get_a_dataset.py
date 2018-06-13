@@ -296,7 +296,23 @@ def wiki(args):
     WikiExtractor.main()
     sys.argv = list(tmp_argv)
 
-    print('All done, the corpus can be found in {}'.format(folder))
+    # Make clean copies of files, no empty, lines, no tags.
+    files = [
+        os.path.join(ls[0], f)
+        for ls in os.walk(wiki_path)
+        for f in ls[2]
+        if re.match('wiki_[0-9]{2}', f)
+    ]
+    for idx, file in enumerate(files):
+        sys.stdout.write('clean file {:.0%} done\r'.format((idx+1)/len(files)))
+        with open(file, 'r') as input_f:
+            f = input_f.read()
+            f = re.sub(r'<.*?>', '', f)
+            f = re.sub(r'\n{2,}', '\n', f)
+            with open('{}_{}'.format(file, 'clean'), 'w') as output_f:
+                output_f.write(f)
+
+    print('\nAll done, the corpus can be found in {}'.format(folder))
     return
 
 
