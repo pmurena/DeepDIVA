@@ -312,7 +312,7 @@ def wiki(args):
             with open('{}_{}'.format(file, 'clean'), 'w') as output_f:
                 output_f.write(f)
 
-    print('\nAll done, the corpus can be found in {}'.format(folder))
+    print('\nAll done, the corpus can be found in {}'.format(wiki_path))
     return
 
 
