@@ -256,6 +256,9 @@ def wiki(args):
     generated files are stored in a wiki folder under the folder passed as
     argument using --output_folder or './data' if the latter isn't specified.
 
+    After extracting all wiki pages, a single text-only corpus file named
+    wiki_dump_clean is generated in --output_folder.
+
     Args:
         args (ArgumentParser): Command line arguments as set in main()
 
