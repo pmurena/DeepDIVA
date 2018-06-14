@@ -269,7 +269,7 @@ def wiki(args):
     wiki_path = os.path.join(args.output_folder, 'wiki')
     _make_folder_if_not_exists(wiki_path)
 
-    '''    # Download archive
+    # Download archive
     source = 'https://dumps.wikimedia.org/enwiki/latest/'
     source += 'enwiki-latest-pages-articles.xml.bz2'
     responce = urllib.request.urlretrieve(
@@ -295,7 +295,7 @@ def wiki(args):
     sys.argv.extend(['-o', wiki_path])
     WikiExtractor.main()
     sys.argv = list(tmp_argv)
-    '''
+
     # Make clean copies of files, no empty, lines, no tags.
     files = [
         os.path.join(ls[0], f)
