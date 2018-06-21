@@ -2,27 +2,19 @@
 This script allows for creation of a validation set from the training set.
 
 """
-
 # Utils
 import argparse
 import inspect
 import os
 import shutil
 import sys
-import urllib.request
-import zipfile
-import bz2
-import json
-import wikipedia
-import re
-import warnings
 
 import torch
 import torchvision
 from PIL import Image
 
 from util.data.dataset_splitter import split_dataset
-from util.externals.wikiextractor import WikiExtractor
+from util.data.handlers import GetTheWiki
 
 
 def mnist(args):
@@ -268,100 +260,15 @@ def wiki(args):
     Raises:
         None
     """
-    # Make wiki folder
-    wiki_path = os.path.join(args.output_folder, 'wiki')
-    _make_folder_if_not_exists(wiki_path)
-
-    # Download archive
-    source = 'https://dumps.wikimedia.org/enwiki/latest/'
-    source += 'enwiki-latest-pages-articles.xml.bz2'
-    responce = urllib.request.urlretrieve(
-        source,
-        './tmp_file_19800223.bz2',
-        _download_reporthook
-    )
-    urllib.request.urlcleanup()
-
-    # Extract wiki dump
-    wiki_dump_file = os.path.join(wiki_path, 'wiki_dump.xml')
-    with open(wiki_dump_file, 'wb') as wiki_dump_xml:
-        with bz2.BZ2File(responce[0], 'rb') as file:
-            print('Inflating wiki_dump.xml to {}'.format(wiki_path))
-            for data in iter(lambda: file.read(100 * 1024), b''):
-                wiki_dump_xml.write(data)
-
-    # Extract text from wiki dump
-    tmp_argv = list(sys.argv)
-    sys.argv = list()
-    sys.argv.extend(['WikiExtractor.py'])
-    sys.argv.extend([wiki_dump_file])
-    sys.argv.extend(['-o', wiki_path])
-    WikiExtractor.main()
-    sys.argv = list(tmp_argv)
-
-    # Make clean copies of files, no empty, lines, no tags.
-    files = [
-        os.path.join(ls[0], f)
-        for ls in os.walk(wiki_path)
-        for f in ls[2]
-        if re.match('wiki_[0-9]{2}', f)
-    ]
-    progress_msg = 'clean file {:.0%} done\r'
-    with open(os.path.join(wiki_path, 'wiki_dump_clean'), 'w') as output_f:
-        for idx, file in enumerate(files):
-            sys.stdout.write(progress_msg.format((idx+1)/len(files)))
-            with open(file, 'r') as input_f:
-                f = input_f.read()
-                f = re.sub(r'<.*?>', '', f)
-                f = re.sub(r'\n{2,}', '\n', f)
-            output_f.write(f)
-
-    print('\nAll done, the corpus can be found in {}'.format(wiki_path))
+    w = GetTheWiki(args.output_folder)
+    w.get()
+    print('All done, the corpus can be found in {}'.format(w))
     return
 
 
 def _make_folder_if_not_exists(path):
     if not os.path.exists(path):
         os.makedirs(path)
-
-
-def _download_reporthook(blocknum, blocksize, totalsize):
-    """Report hook to print downloading progress of urllib.request.urlretrieve()
-
-    Defines the report hook used to call urllib.request.urlretrieve(url,
-    filename=None, reporthook=None, data=None). This function will be called by
-    urlretrieve() after each block is received. Thus, the downloading
-    percentage is computed and displayed to the standard output for each
-    incoming block.
-
-    Args:
-        blocknum (int): Number of received blocks
-        blocksize (int): Size of the incoming network blocks
-        totalsize (int): Size of the incoming file
-
-    Returns:
-        None
-
-    Raises:
-        None
-    """
-    # Compute download progress
-    progress = blocknum * blocksize / totalsize
-
-    # Choose between carriage return and new line
-    if progress < 100:
-        str_end = '\r'
-    else:
-        str_end = '\n'
-
-    # Write download progress to standard output
-    sys.stdout.write('\tDownloading: {:.2%} {}'.format(
-            progress,
-            str_end
-        )
-    )
-
-    return
 
 
 if __name__ == "__main__":
