@@ -13,8 +13,9 @@ import torch
 import torchvision
 from PIL import Image
 
+from multiprocessing import Pool
 from util.data.dataset_splitter import split_dataset
-from util.data.handlers import GetTheWiki
+from util.data.handlers import GetTheWiki, wiki_mutlitask_hook
 
 
 def mnist(args):
@@ -260,8 +261,14 @@ def wiki(args):
     Raises:
         None
     """
-    w = GetTheWiki(args.output_folder)
-    w.get()
+    wiki_getters = [
+        GetTheWiki(args.output_folder, language='en'),
+        GetTheWiki(args.output_folder, language='fr'),
+        GetTheWiki(args.output_folder, language='de'),
+        GetTheWiki(args.output_folder, language='it')
+    ]
+    get_them_all = Pool(3)
+    get_them_all.map(wiki_mutlitask_hook, wiki_getters)
     print('All done, the corpus can be found in {}'.format(w))
     return
 

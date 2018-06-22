@@ -146,6 +146,12 @@ class GetTheWiki:
         return str(self.path)
 
 
+def wiki_mutlitask_hook(getTheWiki_instance):
+    if not isinstance(getTheWiki_instance, GetTheWiki):
+        raise TypeError('Expecting oject of type GetTheWiki')
+    return getTheWiki_instance.get()
+
+
 if __name__ == '__main__':
     wiki = GetTheWiki('data')
     print(wiki)
