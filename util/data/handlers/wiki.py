@@ -24,6 +24,9 @@ class GetTheWiki:
         self.language = language
         self.root = Folder(output_folder, 'wiki')
         self.path = Folder(self.root, self.language)
+        self.train = Folder(self.path, 'train')
+        self.val = Folder(self.path, 'val')
+        self.test = Folder(self.path, 'test')
         self.data = Folder(self.path, 'row_data')
         self.bck = Folder(self.root, Folder('archive', language))
         self.downloader = Downloader(
@@ -68,28 +71,47 @@ class GetTheWiki:
         # Build corpus and vocabulary.
         files = self.get_wiki_dump()
         vocabulary = collections.Counter()
-        corpus = list()
+        train_corpus = list()
+        val_corpus = list()
+        test_corpus = list()
         progress_msg = 'working on {} - {:4d}/{} files done\r'
         for idx, file in enumerate(files):
             progress = int(((idx+1)/len(files))*100)
             sys.stdout.write(progress_msg.format(file, idx+1, len(files)))
             with open(file, 'r') as input_f:
-                    f = re.sub(
-                        r'<.*?>|_|\W+|[0-9]+|[ ]{2,}|\n',
-                        ' ',
-                        input_f.read()
-                    ).lower().split()
-            corpus.extend(f)
-            vocabulary += collections.Counter(f)
-            if progress >= 10 and progress % 10 == 0:
-                file_name = self.data.get_file_name(
-                    'corpus_{:02d}.pickle'.format(int(progress/10))
+                f = re.sub(r'<.*?>', '', input_f.read())
+                f = re.sub(
+                    r'(\W+)',
+                    ' \1 ',
+                    f
                 )
 
-                with open(file_name, 'wb') as c:
-                    pickle.dump(corpus, c)
-                corpus.clear()
-        print('corpus saved to {}'.format(self.data))
+            fiel_num = int(file[len(file)-2:])
+            if fiel_num in range(31, 100):
+                train_corpus.extend(f)
+            elif file_num in range(11, 30):
+                val_corpus.extend(f)
+            else:
+                test_corpus.extend(f)
+
+            vocabulary += collections.Counter(f)
+
+            if progress >= 10 and progress % 10 == 0:
+                file_name = 'corpus_{:02d}.pickle'.format(int(progress/10))
+
+                with open(self.train.get_file_name(file_name), 'wb') as c:
+                    pickle.dump(train_corpus, c)
+
+                with open(self.val.get_file_name(file_name), 'wb') as c:
+                    pickle.dump(val_corpus, c)
+
+                with open(self.test.get_file_name(file_name), 'wb') as c:
+                    pickle.dump(test_corpus, c)
+                train_corpus.clear()
+                val_corpus.clear()
+                test_corpus.clear()
+
+        print('corpus saved to {}'.format(self.path))
         voc_file = self.data.get_file_name('vocabulary.pickle')
         with open(voc_file, 'wb') as voc:
             pickle.dump(vocabulary, voc)
