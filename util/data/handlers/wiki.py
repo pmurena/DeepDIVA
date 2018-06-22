@@ -86,8 +86,8 @@ class GetTheWiki:
                     f
                 )
 
-            fiel_num = int(file[len(file)-2:])
-            if fiel_num in range(31, 100):
+            file_num = int(file[len(file)-2:])
+            if file_num in range(31, 100):
                 train_corpus.extend(f)
             elif file_num in range(11, 30):
                 val_corpus.extend(f)
@@ -120,7 +120,7 @@ class GetTheWiki:
     def get(self, new=False):
         if new:
             self.archive()
-        return self.build_corpus_and_vocabulary()
+        self.build_corpus_and_vocabulary()
 
     def get_wiki_zip(self):
         file_name = self.data.get_file_name(self.downloader)
@@ -149,7 +149,7 @@ class GetTheWiki:
 def wiki_mutlitask_hook(getTheWiki_instance):
     if not isinstance(getTheWiki_instance, GetTheWiki):
         raise TypeError('Expecting oject of type GetTheWiki')
-    return getTheWiki_instance.get()
+    getTheWiki_instance.get()
 
 
 if __name__ == '__main__':

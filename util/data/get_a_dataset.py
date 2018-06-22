@@ -269,7 +269,8 @@ def wiki(args):
     ]
     get_them_all = Pool(3)
     get_them_all.map(wiki_mutlitask_hook, wiki_getters)
-    print('All done, the corpus can be found in {}'.format(w))
+    msg = 'All done, the corpus can be found in {}'
+    print(msg.format(wiki_getters[0].root))
     return
 
 
