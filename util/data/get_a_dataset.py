@@ -267,10 +267,12 @@ def wiki(args):
         GetTheWiki(args.output_folder, language='de'),
         GetTheWiki(args.output_folder, language='it')
     ]
-
+    '''
     get_them_all = Pool(len(wiki_getters))
     get_them_all.map(wiki_mutlitask_hook, wiki_getters)
-    
+    '''
+    for wg in wiki_getters:
+        wg.get()
     msg = 'All done, the corpus can be found in {}'
     print(msg.format(wiki_getters[0].root))
     return
