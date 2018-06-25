@@ -74,7 +74,7 @@ class GetTheWiki:
         train_corpus = list()
         val_corpus = list()
         test_corpus = list()
-        progress_msg = 'working on {} - {:4d}/{} files done\r'
+        progress_msg = 'working on {} - {:4d}/{} files done'
         for idx, file in enumerate(files):
             progress = int(((idx+1)/len(files))*100)
             sys.stdout.write(progress_msg.format(file, idx+1, len(files)))
