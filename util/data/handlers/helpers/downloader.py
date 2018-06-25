@@ -47,7 +47,7 @@ class Downloader:
             str_end = '\n'
 
         # Write download progress to standard output
-        sys.stdout.write('Downloading "{}": {:.2%}'.format(
+        sys.stdout.write('Downloading "{}": {:.2%}\n'.format(
             self.file_name,
             progress
             )

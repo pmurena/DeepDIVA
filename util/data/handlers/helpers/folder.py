@@ -38,7 +38,7 @@ class Folder:
         files = self.get_files()
         for idx, file in enumerate(files):
             sys.stdout.write(
-                'Archiving existing dataset: {:.0%} done\r'.format(
+                'Archiving existing dataset: {:.0%} done\n'.format(
                     (idx+1)/len(files)
                 )
             )
