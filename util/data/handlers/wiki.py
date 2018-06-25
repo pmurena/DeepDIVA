@@ -27,7 +27,7 @@ class GetTheWiki:
         self.train = Folder(self.path, 'train')
         self.val = Folder(self.path, 'val')
         self.test = Folder(self.path, 'test')
-        self.data = Folder(self.path, 'row_data')
+        self.data = Folder(self.path, 'raw_data')
         self.bck = Folder(self.root, Folder('archive', language))
         self.downloader = Downloader(
             self.URL_DOMAIN,
@@ -85,6 +85,11 @@ class GetTheWiki:
                     ' \1 ',
                     f
                 )
+                f = ''.join([
+                    line
+                    for line in input_f.readlines()
+                    if len(line.split()) > 3
+                ])
 
             file_num = int(file[len(file)-2:])
             if file_num in range(31, 100):
