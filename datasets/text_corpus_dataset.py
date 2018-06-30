@@ -8,9 +8,13 @@ import os
 import sys
 import re
 
+import pickle
+import collections
+
 import numpy as np
 # Torch related stuff
 import torch.utils.data as data
+from util.data.handlers.helpers import Folder
 
 
 def load_dataset(dataset_folder):
@@ -40,22 +44,17 @@ def load_dataset(dataset_folder):
     # Sanity check on the splits folders
     error_msg = "wiki files not found in the dataset_folder={}"
     error_msg = error_msg.format(dataset_folder)
-    error_msg = '{} ' + error_msg
-    r_val = Corpus(dataset_folder)
-
-    if len(r_val) > 0:
-        return r_val
-    else:
-        logging.error(error_msg.format(dataset_folder))
-        return None
+    return Corpus(Folder(dataset_folder))
 
 
 class Corpus(data.Dataset):
     """
     This class loads the data_info.json file and prepares it as a dataset.
     """
+    END_OF_SEQUENCE = '<eos>'
+    UNKNOWN = '<unk>'
 
-    def __init__(self, path):
+    def __init__(self, dataset_folder):
         """ Load the data description file and prepare it as a multitask dataset.
 
         Multitask learning allows learning multiple objectives at once. This
@@ -74,18 +73,42 @@ class Corpus(data.Dataset):
             tasks_keys (list(str)): Key names for each task groun-truth in
                 file_name
         """
-        self.path = os.path.expanduser(path)
-        self.data = [
-            os.path.join(ls[0], f)
-            for ls in os.walk(self.path)
-            for f in ls[2]
-            if re.match('wiki_[0-9]{2}_clean', f)
-        ]
+        err_msg = '{} expected to be of type util.data.handlers.helpers.Folder'
 
-        # Shuffle the data once
-        # (otherwise you get clusters of samples of same
-        # class in each minibatch for val and test)
-        np.random.shuffle(self.data)
+        self.data = list()
+
+        with open(dataset_folder.get_file_name('train.pickle'), 'rb') as tr:
+            self.train = pickle.load(tr)
+
+        with open(
+            dataset_folder.get_file_name('vocabulary.pickle'),
+            'rb'
+        ) as voc:
+            self.voc = [
+                word for (word, count) in pickle.load(voc).most_common()
+                if count >= 100
+            ]
+
+        self.voc.append(Corpus.END_OF_SEQUENCE)
+        self.voc.append(Corpus.UNKNOWN)
+
+        self.w2idx = {
+            word: idx
+            for idx, word in enumerate(self.voc)
+        }
+
+    def encode_seq(self, sequence):
+        seq = list()
+        sequence += ' {}'.format(Corpus.END_OF_SEQUENCE)
+        for s in sequence.split():
+            try:
+                seq.append(self.w2idx[s])
+            except KeyError:
+                seq.append(Corpus.UNKNOWN)
+        return seq
+
+    def voc_size(self):
+        return(len(self.voc))
 
     def __getitem__(self, index):
         """
@@ -99,21 +122,21 @@ class Corpus(data.Dataset):
             ground_truth (dict): ground_truth for each task to be learned
 
         """
-        with open(self.data[index], 'r') as file:
-            return file.read()
+        seq = self.encode_seq(self.train[index])
+        r_val = {
+            'word': list(),
+            'target': list()
+        }
+        for idx in range(len(seq)-1):
+            r_val['word'].append(seq[idx])
+            r_val['target'].append(seq[idx+1])
+        return r_val
 
     def __len__(self):
-        return len(self.data)
+        return len(self.train)
 
 
 if __name__ == "__main__":
     print('main() is used for testing only and should not be called otherwise')
-    test = load_dataset('data/wiki')
-
-    inst_test = lambda x: True if isinstance(x, Corpus) else False
-
+    test = load_dataset('~/storage/datasets/wiki/en')
     print(test[0])
-    print(inst_test(test))
-    print(inst_test('models'))
-    print(inst_test('model'))
-    print(len(test))
