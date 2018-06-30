@@ -7,12 +7,16 @@ from datetime import datetime
 
 class Folder:
 
-    def __init__(self, begin, end):
+    def __init__(self, begin, end=''):
         if isinstance(begin, Folder):
             begin = begin.path
         if isinstance(end, Folder):
             end = end.path
-        self.path = os.path.expanduser(os.path.join(begin, end))
+        if end:
+            self.path = os.path.expanduser(os.path.join(begin, end))
+        else:
+            self.path = os.path.expanduser(begin)
+
         self.is_new = Folder._make_folder(self.path)
 
     def archive(self, archive_folder, name='bck'):
@@ -54,18 +58,23 @@ class Folder:
     def is_parent(self, other):
         return self.path == other.path[:len(self.path)]
 
+    def is_empty(self):
+        if os.listdir(self.path):
+            return False
+        return True
+
     def get_files(self, regex=None):
         if regex:
             re.compile(regex)
             return [
-                os.path.expanduser(os.path.join(root, file))
+                os.path.join(root, file)
                 for root, _, files in os.walk(self.path)
                 for file in files
                 if re.match(regex, file)
             ]
         else:
             return [
-                os.path.expanduser(os.path.join(root, file))
+                os.path.join(root, file)
                 for root, _, files in os.walk(self.path)
                 for file in files
             ]
@@ -107,3 +116,15 @@ class Folder:
 
     def __gt__(self, other):
         return self.path > other.path
+
+
+if __name__ == '__main__':
+    fo = Folder('../../storage/datasets/wiki/en')
+    print(fo)
+    fo = Folder('../../storage/datasets/wiki/en', 'raw_data')
+    print(fo)
+    print(len(fo.get_files()))
+    print(len(fo.get_files('.*[0-9]+')))
+    print(len(fo.get_files('.*10')))
+    print(fo.file_exists(fo.get_files()[0]))
+    print(fo.file_exists('blibli'))

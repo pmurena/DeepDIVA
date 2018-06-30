@@ -13,9 +13,14 @@ import torch
 import torchvision
 from PIL import Image
 
-from multiprocessing import Pool
+from multiprocessing import Pool, Queue
+from collections import Counter
 from util.data.dataset_splitter import split_dataset
-from util.data.handlers import GetTheWiki, wiki_mutlitask_hook
+from util.data.handlers import GetTheWiki
+import pickle
+
+
+import time
 
 
 def mnist(args):
@@ -262,19 +267,72 @@ def wiki(args):
         None
     """
     wiki_getters = [
-        GetTheWiki(args.output_folder, language='en'),
-        GetTheWiki(args.output_folder, language='fr'),
-        GetTheWiki(args.output_folder, language='de'),
-        GetTheWiki(args.output_folder, language='it')
+        GetTheWiki(args.output_folder, language='en')
     ]
     '''
     get_them_all = Pool(len(wiki_getters))
     get_them_all.map(wiki_mutlitask_hook, wiki_getters)
     '''
+
     for wg in wiki_getters:
-        wg.get()
+
+        print('get corpus and voc')
+        t = time.time()
+        mp = Pool(args.nb_workers)
+        corpus = list()
+        vocabs = mp.apply_async(wg.add_counter_to_voc)
+        corpora = mp.map(wg.get_corpus, wg.get_wiki_dump())
+        GetTheWiki.VOC_Q.join()
+        GetTheWiki.VOC_Q.put('done')
+        mp.close()
+        print('exctraction done')
+
+        for text in corpora:
+            corpus.extend(text)
+
+        vocabulary = Counter(vocabs.get())
+        print('get corpus and voc in: {}'.format(
+                time.strftime('%H:%M:%S', time.gmtime(time.time()-t))
+            )
+        )
+
+        print('save vocabulary to file')
+        t = time.time()
+        with open(wg.path.get_file_name('vocabulary.pickle'), 'wb') as v:
+            pickle.dump(vocabulary, v)
+        print('vocabulary saved in: {}'.format(
+                time.strftime('%H:%M:%S', time.gmtime(time.time()-t))
+            )
+        )
+
+        print('slice corpus into train/val/test')
+        t = time.time()
+        train_end = int(len(corpus)*.7)
+        val_end = train_end + int(len(corpus)*.2)
+        idx = torch.randperm(len(corpus))
+        train = [corpus[i] for i in idx[:train_end]]
+        val = [corpus[i] for i in idx[train_end:val_end]]
+        test = [corpus[i] for i in idx[val_end:]]
+        print('corpust sliced in: {}'.format(
+                time.strftime('%H:%M:%S', time.gmtime(time.time()-t))
+            )
+        )
+
+        print('save dataset to file')
+        t = time.time()
+        with open(wg.path.get_file_name('train.pickle'), 'wb') as c:
+            pickle.dump(train, c)
+        with open(wg.path.get_file_name('val.pickle'), 'wb') as c:
+            pickle.dump(val, c)
+        with open(wg.path.get_file_name('test.pickle'), 'wb') as c:
+            pickle.dump(test, c)
+        print('datasets saved in: {}'.format(
+                time.strftime('%H:%M:%S', time.gmtime(time.time()-t))
+            )
+        )
+
     msg = 'All done, the corpus can be found in {}'
-    print(msg.format(wiki_getters[0].root))
+    print(msg.format(wiki_getters[0]))
     return
 
 
@@ -299,6 +357,11 @@ if __name__ == "__main__":
                         required=False,
                         type=str,
                         default='./data/')
+    parser.add_argument('--nb-workers',
+                        help='Number of parallel processes.',
+                        required=False,
+                        type=int,
+                        default=12)
     args = parser.parse_args()
 
     getattr(sys.modules[__name__], args.dataset)(args)
