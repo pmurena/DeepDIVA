@@ -12,6 +12,7 @@ import pickle
 import collections
 
 import numpy as np
+import torch
 # Torch related stuff
 import torch.utils.data as data
 from util.data.handlers.helpers import Folder
@@ -42,9 +43,24 @@ def load_dataset(dataset_folder):
     """
 
     # Sanity check on the splits folders
+    dataset_folder = Folder(dataset_folder)
+    train = dataset_folder.get_file_name('train.pickel')
+    val = dataset_folder.get_file_name('val.pickel')
+    test = dataset_folder.get_file_name('test.pickel')
+    voc = dataset_folder.get_file_name('voc.pickel')
+    sanity_check = [
+        dataset_folder.file_exists(train),
+        dataset_folder.file_exists(val),
+        dataset_folder.file_exists(test),
+        dataset_folder.file_exists(voc)
+    ]
     error_msg = "wiki files not found in the dataset_folder={}"
     error_msg = error_msg.format(dataset_folder)
-    return Corpus(Folder(dataset_folder))
+    if False in sanity_check:
+        print(error_msg)
+        sys.exit(-1)
+
+    return Corpus(train, voc), Corpus(val, voc), Corpus(test, voc)
 
 
 class Corpus(data.Dataset):
@@ -54,7 +70,7 @@ class Corpus(data.Dataset):
     END_OF_SEQUENCE = '<eos>'
     UNKNOWN = '<unk>'
 
-    def __init__(self, dataset_folder):
+    def __init__(self, dataset_file, vocabulary_file, word_freq=100):
         """ Load the data description file and prepare it as a multitask dataset.
 
         Multitask learning allows learning multiple objectives at once. This
@@ -77,16 +93,13 @@ class Corpus(data.Dataset):
 
         self.data = list()
 
-        with open(dataset_folder.get_file_name('train.pickle'), 'rb') as tr:
+        with open(dataset_file, 'rb') as tr:
             self.train = pickle.load(tr)
 
-        with open(
-            dataset_folder.get_file_name('vocabulary.pickle'),
-            'rb'
-        ) as voc:
+        with open(vocabulary_file, 'rb') as voc:
             self.voc = [
                 word for (word, count) in pickle.load(voc).most_common()
-                if count >= 100
+                if count >= word_freq
             ]
 
         self.voc.append(Corpus.UNKNOWN)
@@ -104,8 +117,8 @@ class Corpus(data.Dataset):
             try:
                 seq.append(self.w2idx[s])
             except KeyError:
-                seq.append(Corpus.UNKNOWN)
-        return seq
+                seq.append(self.w2idx[Corpus.UNKNOWN])
+        return torch.tensor(seq, dtype=torch.long)
 
     def voc_size(self):
         return(len(self.voc))
@@ -124,12 +137,12 @@ class Corpus(data.Dataset):
         """
         seq = self.encode_seq(self.train[index])
         r_val = {
-            'word': list(),
-            'target': list()
+            'sentance': list(),
+            'targets': list()
         }
         for idx in range(len(seq)-1):
-            r_val['word'].append(seq[idx])
-            r_val['target'].append(seq[idx+1])
+            r_val['sentance'].append(seq[idx])
+            r_val['targets'].append(seq[idx+1])
         return r_val
 
     def __len__(self):
@@ -141,3 +154,9 @@ if __name__ == "__main__":
     test = load_dataset('~/storage/datasets/wiki/en')
     print(test[0])
     print(len(test.voc))
+    test_loader = data.DataLoader(test, batch_size=2)
+    for batch, data in enumerate(test_loader):
+        print(data['sentance'])
+        print(data['targets'])
+        if batch == 0:
+            break
