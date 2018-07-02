@@ -25,6 +25,7 @@ from tensorboardX import SummaryWriter
 # DeepDIVA
 import models
 from datasets import image_folder_dataset, bidimensional_dataset
+from dataset import text_corpus_dataset
 from util.data.dataset_analytics import compute_mean_std
 from util.misc import get_all_files_in_folders_and_subfolders
 
@@ -294,6 +295,27 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
     except RuntimeError:
         logging.debug("No bidimensional found in dataset folder provided")
 
+    ###########################################################################
+    # Load the dataset splits as text corpus
+    try:
+        logging.debug("Try to load dataset as wikipedia corpus")
+        train_ds, val_ds, test_ds = text_corpus_dataset.load_dataset(
+            dataset_folder
+        )
+
+        train_loader, val_loader, test_loader = _dataloaders_from_datasets(
+            batch_size,
+            train_ds,
+            val_ds,
+            test_ds,
+            workers
+        )
+        logging.info("Dataset loaded as bidimensional data")
+        return train_loader, val_loader, test_loader, train_loader.voc_size
+
+    except RuntimeError:
+        logging.debug("No wikipedia data found in dataset folder provided")
+
     ###############################################################################################
     # Verify that eventually a dataset has been correctly loaded
     logging.error("No datasets have been loaded. Verify dataset folder location or dataset folder structure")
@@ -438,18 +460,18 @@ def set_up_logging(parser, experiment_name, output_folder, quiet, args_dict, deb
     dataset = os.path.basename(os.path.normpath(kwargs['dataset_folder']))
 
     """
-    We extract the TRAIN parameters names (such as model_name, lr, ... ) from the parser directly. 
+    We extract the TRAIN parameters names (such as model_name, lr, ... ) from the parser directly.
     This is a somewhat risky operation because we access _private_variables of parsers classes.
-    However, within our context this can be regarded as safe. 
+    However, within our context this can be regarded as safe.
     Shall we be wrong, a quick fix is writing a list of possible parameters such as:
-    
-        train_param_list = ['model_name','lr', ...] 
-    
+
+        train_param_list = ['model_name','lr', ...]
+
     and manually maintain it (boring!).
-    
+
     Resources:
     https://stackoverflow.com/questions/31519997/is-it-possible-to-only-parse-one-argument-groups-parameters-with-argparse
-    
+
     """
 
     # Fetch all non-default parameters
