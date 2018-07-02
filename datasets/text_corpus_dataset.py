@@ -89,8 +89,8 @@ class Corpus(data.Dataset):
                 if count >= 100
             ]
 
-        self.voc.append(Corpus.END_OF_SEQUENCE)
         self.voc.append(Corpus.UNKNOWN)
+        self.voc.append(Corpus.END_OF_SEQUENCE)
 
         self.w2idx = {
             word: idx
@@ -140,3 +140,4 @@ if __name__ == "__main__":
     print('main() is used for testing only and should not be called otherwise')
     test = load_dataset('~/storage/datasets/wiki/en')
     print(test[0])
+    print(len(test.voc))
