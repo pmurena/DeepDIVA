@@ -26,8 +26,9 @@ class LSTM_LM_And_w2v(nn.Module):
         super(LSTM_LM_And_w2v, self).__init__()
 
         self.vocabulary_size = output_channels
-
         self.embedding_dim = 500
+        self.expected_input_size = (self.vocabulary_size, self.embedding_dim)
+
         self.hidden_dim = self.embedding_dim
 
         self.word_embeddings = nn.Embedding(
