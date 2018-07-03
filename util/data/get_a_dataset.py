@@ -298,7 +298,7 @@ def wiki(args):
 
         print('save vocabulary to file')
         t = time.time()
-        with open(wg.path.get_file_name('vocabulary.pickle'), 'wb') as v:
+        with open(wg.path.get_file_name('voc.pkl'), 'wb') as v:
             pickle.dump(vocabulary, v)
         print('vocabulary saved in: {}'.format(
                 time.strftime('%H:%M:%S', time.gmtime(time.time()-t))
@@ -320,11 +320,11 @@ def wiki(args):
 
         print('save dataset to file')
         t = time.time()
-        with open(wg.path.get_file_name('train.pickle'), 'wb') as c:
+        with open(wg.path.get_file_name('train.pkl'), 'wb') as c:
             pickle.dump(train, c)
-        with open(wg.path.get_file_name('val.pickle'), 'wb') as c:
+        with open(wg.path.get_file_name('val.pkl'), 'wb') as c:
             pickle.dump(val, c)
-        with open(wg.path.get_file_name('test.pickle'), 'wb') as c:
+        with open(wg.path.get_file_name('test.pkl'), 'wb') as c:
             pickle.dump(test, c)
         print('datasets saved in: {}'.format(
                 time.strftime('%H:%M:%S', time.gmtime(time.time()-t))
