@@ -93,7 +93,6 @@ class Folder:
 
     def file_exists(self, file_name):
         _, file_name = os.path.split(str(file_name))
-        print('hiho {}'.format(self.get_file_name(file_name))
         if os.path.isfile(self.get_file_name(file_name)):
             return True
         return False
