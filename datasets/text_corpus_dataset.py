@@ -44,10 +44,10 @@ def load_dataset(dataset_folder):
 
     # Sanity check on the splits folders
     dataset_folder = Folder(dataset_folder)
-    train = dataset_folder.get_file_name('train.pickel')
-    val = dataset_folder.get_file_name('val.pickel')
-    test = dataset_folder.get_file_name('test.pickel')
-    voc = dataset_folder.get_file_name('voc.pickel')
+    train = dataset_folder.get_file_name('train.pkl')
+    val = dataset_folder.get_file_name('val.pkl')
+    test = dataset_folder.get_file_name('test.pkl')
+    voc = dataset_folder.get_file_name('voc.pkl')
     sanity_check = [
         dataset_folder.file_exists(train),
         dataset_folder.file_exists(val),
@@ -118,7 +118,7 @@ class Corpus(data.Dataset):
                 seq.append(self.w2idx[s])
             except KeyError:
                 seq.append(self.w2idx[Corpus.UNKNOWN])
-        return torch.tensor(seq, dtype=torch.long)
+        return torch.tensor(seq, dtype=torch.long, requires_grad=True)
 
     def voc_size(self):
         return(len(self.voc))
@@ -136,14 +136,7 @@ class Corpus(data.Dataset):
 
         """
         seq = self.encode_seq(self.train[index])
-        r_val = {
-            'sentance': list(),
-            'targets': list()
-        }
-        for idx in range(len(seq)-1):
-            r_val['sentance'].append(seq[idx])
-            r_val['targets'].append(seq[idx+1])
-        return r_val
+        return seq[:-1], seq[1:]
 
     def __len__(self):
         return len(self.train)
@@ -151,12 +144,11 @@ class Corpus(data.Dataset):
 
 if __name__ == "__main__":
     print('main() is used for testing only and should not be called otherwise')
-    test = load_dataset('~/storage/datasets/wiki/en')
-    print(test[0])
-    print(len(test.voc))
-    test_loader = data.DataLoader(test, batch_size=2)
+    _, test, _ = load_dataset('~/storage/datasets/wiki/en')
+    print(test[1])
+    print(test.voc_size())
+    test_loader = data.DataLoader(test, batch_size=1)
     for batch, data in enumerate(test_loader):
-        print(data['sentance'])
-        print(data['targets'])
+        print(data)
         if batch == 0:
             break
