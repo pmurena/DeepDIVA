@@ -6,12 +6,13 @@ import warnings
 import numpy as np
 # Torch related stuff
 import torch
+from torch.nn.utils import rnn
 from sklearn.metrics import confusion_matrix, classification_report
 from tqdm import tqdm
 
 from util.evaluation.metrics import accuracy
 # DeepDIVA
-from util.misc import AverageMeter, _prettyprint_logging_label, save_image_and_log_to_tensorboard
+from util.misc import AverageMeter, _prettyprint_logging_label, save_image_and_log_to_tensorboard, sort_sequences_desc_order
 from util.visualization.confusion_matrix_heatmap import make_heatmap
 
 
@@ -77,41 +78,56 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
     targets = []
 
     pbar = tqdm(enumerate(data_loader), total=len(data_loader), unit='batch', ncols=150, leave=False)
-    for batch_idx, (input, target) in pbar:
+    for batch_idx, data in pbar:
+        # pmu
+        is_sequence = True if len(data) == 3 else False
+        if is_sequence:
+            in_data, length, target = sort_sequences_desc_order(data)
+        else:
+            in_data, target = data
 
         # Measure data loading time
         data_time.update(time.time() - end)
-
         # Moving data to GPU
         if not no_cuda:
-            input = input.cuda(async=True)
+            in_data = in_data.cuda(async=True)
             target = target.cuda(async=True)
+            # pmu
+            length = length.cuda(async=True) if is_sequence else None
 
+        # pmu
         # Convert the input and its labels to Torch Variables
-        input_var = torch.autograd.Variable(input, volatile=True)
-        target_var = torch.autograd.Variable(target, volatile=True)
+        input_var = in_data  # torch.autograd.Variable(input, volatile=True)
+        target_var = target  # torch.autograd.Variable(target, volatile=True)
 
         # Compute output
-        output = model(input_var)
+        # pmu
+        if is_sequence:
+            model.zero_grad()
+            output = model((input_var, length))
+            output = output.view(data_loader.batch_size, 2)
+            target_var = target_var.view(data_loader.batch_size)
+        else:
+            output = model(input_var)
 
         # Compute and record the loss
         loss = criterion(output, target_var)
-        losses.update(loss.data[0], input.size(0))
+        losses.update(loss.item(), input_var.size(0))
 
         # Compute and record the accuracy
-        acc1 = accuracy(output.data, target, topk=(1,))[0]
-        top1.update(acc1[0], input.size(0))
+        acc1 = accuracy(output, target_var, topk=(1,))[0]
+        top1.update(acc1[0], target_var.size(0))
 
         # Get the predictions
         _ = [preds.append(item) for item in [np.argmax(item) for item in output.data.cpu().numpy()]]
-        _ = [targets.append(item) for item in target.cpu().numpy()]
+        _ = [targets.append(item) for item in target_var.cpu().numpy()]
 
         # Add loss and accuracy to Tensorboard
         if multi_run is None:
-            writer.add_scalar(logging_label + '/mb_loss', loss.data[0], epoch * len(data_loader) + batch_idx)
+            writer.add_scalar(logging_label + '/mb_loss', loss.item(), epoch * len(data_loader) + batch_idx)
             writer.add_scalar(logging_label + '/mb_accuracy', acc1.cpu().numpy(), epoch * len(data_loader) + batch_idx)
         else:
-            writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.data[0],
+            writer.add_scalar(logging_label + '/mb_loss_{}'.format(multi_run), loss.item(),
                               epoch * len(data_loader) + batch_idx)
             writer.add_scalar(logging_label + '/mb_accuracy_{}'.format(multi_run), acc1.cpu().numpy(),
                               epoch * len(data_loader) + batch_idx)

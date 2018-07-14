@@ -1,7 +1,7 @@
 """
 This file is the template for the boilerplate of train/test of a DNN for image classification
 
-There are a lot of parameter which can be specified to modify the behaviour and they should be used 
+There are a lot of parameter which can be specified to modify the behaviour and they should be used
 instead of hard-coding stuff.
 """
 
@@ -55,20 +55,20 @@ class ImageClassification:
         """
 
         # Get the selected model input size
-        model_expected_input_size = models.__dict__[model_name]().expected_input_size
-        ImageClassification._validate_model_input_size(model_expected_input_size, model_name)
-        logging.info('Model {} expects input size of {}'.format(model_name, model_expected_input_size))
+        # model_expected_input_size = models.__dict__[model_name]().expected_input_size
+        # ImageClassification._validate_model_input_size(model_expected_input_size, model_name)
+        # logging.info('Model {} expects input size of {}'.format(model_name, model_expected_input_size))
 
         # Setting up the dataloaders
+        model_expected_input_size = None
         train_loader, val_loader, test_loader, num_classes = set_up_dataloaders(model_expected_input_size, **kwargs)
 
         # Setting up model, optimizer, criterion
         model, criterion, optimizer, best_value, start_epoch = set_up_model(num_classes=num_classes,
-                                                                            model_name=model_name,
-                                                                            lr=lr,
-                                                                            train_loader=train_loader,
-                                                                            **kwargs)
-
+                                                                             model_name=model_name,
+                                                                             lr=lr,
+                                                                             train_loader=train_loader,
+                                                                             **kwargs)
         # Core routine
         logging.info('Begin training')
         val_value = np.zeros((epochs + 1 - start_epoch))
@@ -104,7 +104,7 @@ class ImageClassification:
 
     ####################################################################################################################
     """
-    These methods delegate their function to other classes in this package. 
+    These methods delegate their function to other classes in this package.
     It is useful because sub-classes can selectively change the logic of certain parts only.
     """
 

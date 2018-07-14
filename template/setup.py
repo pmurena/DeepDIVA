@@ -25,7 +25,7 @@ from tensorboardX import SummaryWriter
 # DeepDIVA
 import models
 from datasets import image_folder_dataset, bidimensional_dataset
-from dataset import text_corpus_dataset
+from datasets import text_corpus_dataset
 from util.data.dataset_analytics import compute_mean_std
 from util.misc import get_all_files_in_folders_and_subfolders
 
@@ -219,6 +219,7 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
     dataset = os.path.basename(os.path.normpath(dataset_folder))
     logging.info('Loading {} from:{}'.format(dataset, dataset_folder))
 
+    '''
     ###############################################################################################
     # Load the dataset splits as images
     try:
@@ -294,6 +295,7 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
 
     except RuntimeError:
         logging.debug("No bidimensional found in dataset folder provided")
+    '''
 
     ###########################################################################
     # Load the dataset splits as text corpus
@@ -310,8 +312,8 @@ def set_up_dataloaders(model_expected_input_size, dataset_folder, batch_size, wo
             test_ds,
             workers
         )
-        logging.info("Dataset loaded as bidimensional data")
-        return train_loader, val_loader, test_loader, train_loader.voc_size
+        logging.info("Dataset loaded as wikipedia data")
+        return train_loader, val_loader, test_loader, train_ds.voc_size()
 
     except RuntimeError:
         logging.debug("No wikipedia data found in dataset folder provided")

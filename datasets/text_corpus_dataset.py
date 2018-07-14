@@ -10,12 +10,17 @@ import re
 
 import pickle
 import collections
+import random
 
 import numpy as np
 import torch
+from multiprocessing import Pool
 # Torch related stuff
 import torch.utils.data as data
 from util.data.handlers.helpers import Folder
+from torch.nn.utils import rnn
+
+from sys import getsizeof
 
 
 def load_dataset(dataset_folder):
@@ -91,34 +96,25 @@ class Corpus(data.Dataset):
         """
         err_msg = '{} expected to be of type util.data.handlers.helpers.Folder'
 
-        self.data = list()
-
         with open(dataset_file, 'rb') as tr:
-            self.train = pickle.load(tr)
-
+            self.data = pickle.load(tr)
+        self.neg_idx = random.sample(range(len(self)), int(len(self)/2))
+        self.seq_len = len(max(self.data, key=len).split())
+        self.voc = [Corpus.END_OF_SEQUENCE, Corpus.UNKNOWN]
         with open(vocabulary_file, 'rb') as voc:
-            self.voc = [
-                word for (word, count) in pickle.load(voc).most_common()
+            _ = [
+                self.voc.append(word)
+                for (word, count) in pickle.load(voc).most_common()
                 if count >= word_freq
             ]
-
-        self.voc.append(Corpus.UNKNOWN)
-        self.voc.append(Corpus.END_OF_SEQUENCE)
-
         self.w2idx = {
             word: idx
             for idx, word in enumerate(self.voc)
         }
-
-    def encode_seq(self, sequence):
-        seq = list()
-        sequence += ' {}'.format(Corpus.END_OF_SEQUENCE)
-        for s in sequence.split():
-            try:
-                seq.append(self.w2idx[s])
-            except KeyError:
-                seq.append(self.w2idx[Corpus.UNKNOWN])
-        return torch.tensor(seq, dtype=torch.long, requires_grad=True)
+        self.idx2w = {
+            idx: word
+            for word, idx in self.w2idx.items()
+        }
 
     def voc_size(self):
         return(len(self.voc))
@@ -135,20 +131,65 @@ class Corpus(data.Dataset):
             ground_truth (dict): ground_truth for each task to be learned
 
         """
-        seq = self.encode_seq(self.train[index])
-        return seq[:-1], seq[1:]
+        neg = True if index in self.neg_idx else False
+        seq = list()
+        for s in self.data[index].split():
+            try:
+                seq.append(self.w2idx[s])
+            except KeyError:
+                seq.append(self.w2idx[Corpus.UNKNOWN])
+        if neg:
+            random.shuffle(seq)
+        original_seq_len = len(seq)
+        eos_idx = self.w2idx[Corpus.END_OF_SEQUENCE]
+        seq.extend([eos_idx] * (self.seq_len-original_seq_len))
+        encoded_padded_seq = torch.tensor(seq)
+        label = torch.tensor(int(neg))
+        return encoded_padded_seq, original_seq_len, label
 
     def __len__(self):
-        return len(self.train)
+        return len(self.data)
 
 
 if __name__ == "__main__":
     print('main() is used for testing only and should not be called otherwise')
-    _, test, _ = load_dataset('~/storage/datasets/wiki/en')
-    print(test[1])
-    print(test.voc_size())
-    test_loader = data.DataLoader(test, batch_size=1)
-    for batch, data in enumerate(test_loader):
-        print(data)
-        if batch == 0:
-            break
+    test = Corpus('/home/pat/storage/datasets/wiki/en/test.pkl', '/home/pat/storage/datasets/wiki/en/voc.pkl')
+
+    test[3]
+    # print(test[0][0].size())
+    # print(test[0:100:30])
+    test_data = torch.utils.data.DataLoader(test, batch_size=3)
+    print(test_data.batch_size)
+    # for data in test_data:
+    #     myList = [
+    #         data[0],
+    #         data[1],
+    #         data[2]
+    #     ]
+    #     input(myList)
+    #    lengths, idx = data[1].sort(descending=True)
+    #    sequences = list()
+    #    labels = list()
+    #    for i in idx:
+    #        sequences.append(data[0][i].numpy())
+    #        labels.append(data[2][i].numpy())
+    #    packed_padded_seq = rnn.pack_padded_sequence(
+    #        torch.tensor(sequences),
+    #        torch.tensor(lengths),
+    #        batch_first=True
+    #    )
+    #    input(getsizeof(packed_padded_seq))
+    #print(test[3])
+    #for elem in test[3:6]:
+    #    print(elem)
+    #for data, label in test[500:200:-20]:
+    #    print(len(data))
+    #for t in test.data:
+    #    print(len(t))
+    #for (data, label) in test:
+    #    da = ''
+    #    for idx, d in enumerate(data):
+    #        da += ' {}'.format(test.idx2w[int(d)])
+    #        if idx == 50:
+    #            break
+    #    input('{}: {}'.format(label, da))

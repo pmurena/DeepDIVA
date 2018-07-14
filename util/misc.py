@@ -233,3 +233,12 @@ def save_image_and_log_to_tensorboard(writer=None, tag=None, image_tensor=None, 
     cv2.imwrite(dest_filename, np.roll(image_tensor, 1, axis=-1))
 
     return
+
+
+def sort_sequences_desc_order(data):
+    lengths, idx = data[1].sort(descending=True)
+    se = data[0].numpy()
+    la = data[2].numpy()
+    sequences = torch.tensor(se[idx], dtype=torch.long)
+    labels = torch.tensor(la[idx], dtype=torch.long)
+    return sequences, lengths, labels

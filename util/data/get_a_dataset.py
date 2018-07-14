@@ -267,7 +267,9 @@ def wiki(args):
         None
     """
     wiki_getters = [
-        GetTheWiki(args.output_folder, language='en')
+        GetTheWiki(args.output_folder, language='de'),
+        GetTheWiki(args.output_folder, language='it'),
+        GetTheWiki(args.output_folder, language='fr')
     ]
     '''
     get_them_all = Pool(len(wiki_getters))
@@ -279,7 +281,6 @@ def wiki(args):
         print('get corpus and voc')
         t = time.time()
         mp = Pool(args.nb_workers)
-        corpus = list()
         vocabs = mp.apply_async(wg.add_counter_to_voc)
         corpora = mp.map(wg.get_corpus, wg.get_wiki_dump())
         GetTheWiki.VOC_Q.join()
@@ -287,6 +288,7 @@ def wiki(args):
         mp.close()
         print('exctraction done')
 
+        corpus = list()
         for text in corpora:
             corpus.extend(text)
 
@@ -361,7 +363,7 @@ if __name__ == "__main__":
                         help='Number of parallel processes.',
                         required=False,
                         type=int,
-                        default=12)
+                        default=10)
     args = parser.parse_args()
 
     getattr(sys.modules[__name__], args.dataset)(args)

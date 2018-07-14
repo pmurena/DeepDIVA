@@ -1,0 +1,49 @@
+[2018-07-14 01:53:52] [    INFO] --- Setup logging. Log file: log/build_wiki_lm/en/model_name=LSTM_LM_And_w2v/batch_size=1000/epochs=50/lr=0.1/decay_lr=5/14-07-18-01h-53m-52s/logs.txt (setup.py:523)
+[2018-07-14 01:53:52] [    INFO] --- Arguments saved to: log/build_wiki_lm/en/model_name=LSTM_LM_And_w2v/batch_size=1000/epochs=50/lr=0.1/decay_lr=5/14-07-18-01h-53m-52s/args.txt (setup.py:526)
+[2018-07-14 01:53:52] [    INFO] --- Initialize Tensorboard SummaryWriter (setup.py:531)
+[2018-07-14 01:53:52] [ WARNING] --- Git status is ignored! (RunMe.py:141)
+[2018-07-14 01:53:52] [    INFO] --- Randomly chosen seed is: 1136187870 (setup.py:610)
+[2018-07-14 01:53:52] [    INFO] --- Loading en from:/home/pat/storage/datasets/wiki/en/ (setup.py:220)
+[2018-07-14 01:54:50] [    INFO] --- Dataset loaded as wikipedia data (setup.py:315)
+[2018-07-14 01:54:50] [    INFO] --- Setting up model LSTM_LM_And_w2v (setup.py:79)
+[2018-07-14 01:54:55] [ WARNING] --- Missing analytics.csv file for dataset located at /home/pat/storage/datasets/wiki/en/ (setup.py:380)
+[2018-07-14 01:54:55] [ WARNING] --- Attempt creating analytics.csv file for dataset located at /home/pat/storage/datasets/wiki/en/ (setup.py:382)
+[2018-07-14 01:54:55] [   ERROR] --- Creation of analytics.csv failed. (setup.py:386)
+[2018-07-14 01:54:55] [ WARNING] --- Unable to load information for data balancing. Using normal criterion (setup.py:96)
+[2018-07-14 01:54:55] [    INFO] --- Transfer model to GPU (setup.py:101)
+[2018-07-14 01:54:55] [    INFO] --- Begin training (image_classification.py:73)
+[2018-07-14 01:57:51] [   ERROR] --- Unhandled error: RuntimeError('cuda runtime error (2) : out of memory at /opt/conda/conda-bld/pytorch_1524590031827/work/aten/src/THC/generic/THCStorage.cu:58',) (RunMe.py:194)
+[2018-07-14 01:57:51] [   ERROR] --- Traceback (most recent call last):
+  File "template/RunMe.py", line 187, in _execute
+    **args.__dict__)
+  File "/home/pat/git/DeepDIVA/template/runner/image_classification/image_classification.py", line 77, in single_run
+    val_value[-1] = ImageClassification._validate(val_loader, model, criterion, writer, -1, **kwargs)
+  File "/home/pat/git/DeepDIVA/template/runner/image_classification/image_classification.py", line 117, in _validate
+    return evaluate.validate(val_loader, model, criterion, writer, epoch, **kwargs)
+  File "/home/pat/git/DeepDIVA/template/runner/image_classification/evaluate.py", line 21, in validate
+    return _evaluate(val_loader, model, criterion, writer, epoch, 'val', no_cuda, log_interval, **kwargs)
+  File "/home/pat/git/DeepDIVA/template/runner/image_classification/evaluate.py", line 107, in _evaluate
+    output = model((input_var, length))
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/modules/module.py", line 491, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/parallel/data_parallel.py", line 114, in forward
+    outputs = self.parallel_apply(replicas, inputs, kwargs)
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/parallel/data_parallel.py", line 124, in parallel_apply
+    return parallel_apply(replicas, inputs, kwargs, self.device_ids[:len(replicas)])
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/parallel/parallel_apply.py", line 65, in parallel_apply
+    raise output
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/parallel/parallel_apply.py", line 41, in _worker
+    output = module(*input, **kwargs)
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/modules/module.py", line 491, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/pat/git/DeepDIVA/models/LSTM_LM_And_w2v.py", line 75, in forward
+    embeds = self.word_embeddings(padded_seq)
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/modules/module.py", line 491, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/modules/sparse.py", line 108, in forward
+    self.norm_type, self.scale_grad_by_freq, self.sparse)
+  File "/home/pat/miniconda/envs/deepdiva/lib/python3.6/site-packages/torch/nn/functional.py", line 1076, in embedding
+    return torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)
+RuntimeError: cuda runtime error (2) : out of memory at /opt/conda/conda-bld/pytorch_1524590031827/work/aten/src/THC/generic/THCStorage.cu:58
+ (RunMe.py:195)
+[2018-07-14 01:57:51] [   ERROR] --- Execution finished with errors :( (RunMe.py:196)
