@@ -107,6 +107,7 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
             output = model((input_var, length))
             output = output.view(data_loader.batch_size, 2)
             target_var = target_var.view(data_loader.batch_size)
+            input(output.size())
         else:
             output = model(input_var)
 
