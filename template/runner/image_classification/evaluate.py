@@ -105,9 +105,8 @@ def _evaluate(data_loader, model, criterion, writer, epoch, logging_label, no_cu
         if is_sequence:
             model.zero_grad()
             output = model((input_var, length))
-            output = output.view(data_loader.batch_size, 2)
-            target_var = target_var.view(data_loader.batch_size)
-            input(output.size(0))
+            output = output.view(output.size(0), 2)
+            target_var = target_var.view(output.size(0))
         else:
             output = model(input_var)
 
