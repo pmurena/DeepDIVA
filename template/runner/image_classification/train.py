@@ -86,8 +86,8 @@ def train(train_loader, model, criterion, optimizer, writer, epoch, no_cuda=Fals
         if is_sequence:
             model.zero_grad()
             output = model((input_var, length))
-            output = output.view(train_loader.batch_size, 2)
-            target_var = target_var.view(train_loader.batch_size)
+            output = output.view(output.size(0), 2)
+            target_var = target_var.view(output.size(0))
         else:
             output = model(input_var)
 
